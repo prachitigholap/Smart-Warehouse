@@ -1,0 +1,105 @@
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+#include <DHT.h>
+#include <Servo.h>
+BlynkTimer timer;
+
+#define DHTPIN 4    
+
+#define DHTTYPE DHT22   
+
+Servo servo;
+char ssid[] = "PKG";
+char pass[] = "12345678";
+char auth[] = "CptzaF72SEgIsgS5FK3J4de6XQzN2o3F";
+
+DHT dht(DHTPIN, DHTTYPE);
+
+
+int mq135 = A0; // smoke sensor is connected with the analog pin A0 
+int data = 0; 
+
+int flag=0;
+int Obstacle;
+
+
+void setup() 
+{
+  Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
+  timer.setInterval(1000L, getSendData); // new data will be updated every 1 sec 
+
+  pinMode(D1,INPUT_PULLUP);
+  timer.setInterval(1000L,notifyOnThings);
+
+  
+  dht.begin();  
+  timer.setInterval(1000L, sendSensor);
+
+  pinMode(D0,INPUT_PULLUP);
+  timer.setInterval(1000L,notifyOnThings); 
+  
+}
+
+void loop() 
+{
+  timer.run(); // Initiates SimpleTimer
+  Blynk.run();
+//  Blynk.run();
+//  timer.run();
+}
+
+void getSendData()
+{
+data = analogRead(mq135); 
+  Blynk.virtualWrite(V2, data); //
+ 
+  if (data > 5000
+  )
+  {
+    Blynk.notify("Smoke Detected"); 
+  }
+ 
+}
+
+
+
+void sendSensor()
+{
+  float h = dht.readHumidity();
+  float t = dht.readTemperature(); // or dht.readTemperature(true) for Fahrenheit
+  servo.attach(13); //D7
+  servo.write(0);
+  if (isnan(h) || isnan(t)) {
+    Serial.println("Failed to read from DHT sensor!");
+    return;
+  }
+  // You can send any value at any time.
+  // Please don't send more that 10 values per second.
+  Blynk.virtualWrite(V5, h);
+  Blynk.virtualWrite(V6, t);
+//  if (h > 80){
+//    servo.write(270);
+//    delay(5000);
+//    servo.write(0);
+//    delay(5000);
+//  }
+}
+
+
+
+void notifyOnThings()
+{
+  Obstacle = digitalRead(D0);
+  if (Obstacle == LOW) {
+    Serial.println("All clear");
+  }
+ else {
+   Serial.println("1 - stop");
+   Blynk.notify("Alert : Admin Someone is in the Warehouse");
+
+  }
+}
